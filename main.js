@@ -40,6 +40,7 @@ var defaultImageSource = {
 };
 var visibleAttributes = ["SPRITES","HEAD","BODY","ATTR1","ATTR2","ATTR4","HORSE","SHIELD","SWORD","PARAM1"];
 var defaultImage = {};
+var animatedImages = {};
 
 function preloadImages() {
   for (let i of Object.keys(defaultImageSource)) {
@@ -241,6 +242,7 @@ function gameLoop(timeStamp) {
   let timeElapsed = currentTick - lastTick;
 
   if (timeElapsed > desiredFrameTick) {
+    updateAnimatedImages(timeElapsed);
     draw(ox, oy);
     lastTick = currentTick;
   }
@@ -330,8 +332,9 @@ function draw(x,y) {
         tx = drawx;
         ty = drawy;
         
-        imgw = defaultImage[compareSpriteSource].width;
-        imgh = defaultImage[compareSpriteSource].height;
+        let shieldImage = getDrawableImage(compareSpriteSource);
+        imgw = shieldImage.width;
+        imgh = shieldImage.height;
         
         if (imgw != 38) {
           sx = (sx * imgw) / 38;
@@ -348,7 +351,7 @@ function draw(x,y) {
         
        if (defaultConvertGanis.indexOf(gani.file) >= 0 && gani.dir == 2 && spriteObject.index == 12) tx += 16;
 
-        context.drawImage(defaultImage[compareSpriteSource],sx,sy,sw,sh,tx,ty,sw,sh);
+        context.drawImage(shieldImage,sx,sy,sw,sh,tx,ty,sw,sh);
       } else {
         context.drawImage(defaultImage[compareSpriteSource],spriteObject.sx,spriteObject.sy,spriteObject.sw,spriteObject.sh,drawx, drawy,spriteObject.sw,spriteObject.sh);
         
@@ -396,7 +399,7 @@ body.addEventListener('drop', (event) => {
   for (const file of fileList) {
     if (!file) continue;
     
-    if (file.type.match(/image.*/)) {
+    if (file.type.match(/image.*/) || isGifFile(file)) {
       loadImageFile(file);
     } else if (file.name.endsWith(".gani")) loadExternalGani(file);
   }
@@ -406,13 +409,139 @@ uploader.onchange = () => {
   const file = uploader.files[0];
   //console.log("File uploaded: " + file.name);
   
-  if (file.type.match(/image.*/)) {
+  if (file.type.match(/image.*/) || isGifFile(file)) {
     loadImageFile(file);
   } else if (file.name.endsWith(".gani")) loadExternalGani(file);
 }
 
+function isGifFile(file) {
+  return file.type === "image/gif" || file.name.toLowerCase().endsWith(".gif");
+}
+
+function getDrawableImage(imgType) {
+  if (animatedImages[imgType] && animatedImages[imgType].frames.length > 0) {
+    return animatedImages[imgType].frames[animatedImages[imgType].currentFrame].canvas;
+  }
+  return defaultImage[imgType];
+}
+
+function clearAnimatedImage(imgType) {
+  delete animatedImages[imgType];
+}
+
+function updateAnimatedImages(elapsedMs) {
+  for (let imgType of Object.keys(animatedImages)) {
+    let anim = animatedImages[imgType];
+    if (!anim || anim.frames.length <= 1) continue;
+
+    anim.elapsed += elapsedMs;
+    let frame = anim.frames[anim.currentFrame];
+    let delay = frame.delay || 100;
+
+    while (anim.elapsed >= delay) {
+      anim.elapsed -= delay;
+      anim.currentFrame = (anim.currentFrame + 1) % anim.frames.length;
+      frame = anim.frames[anim.currentFrame];
+      delay = frame.delay || 100;
+    }
+  }
+}
+
+function clearGifRect(pixels, width, x, y, w, h) {
+  for (let row = y; row < y + h; row++) {
+    for (let col = x; col < x + w; col++) {
+      let idx = (row * width + col) * 4;
+      pixels[idx] = 0;
+      pixels[idx + 1] = 0;
+      pixels[idx + 2] = 0;
+      pixels[idx + 3] = 0;
+    }
+  }
+}
+
+function decodeGifToAnimation(arrayBuffer) {
+  let reader = new GifReader(new Uint8Array(arrayBuffer));
+  let width = reader.width;
+  let height = reader.height;
+  let numFrames = reader.numFrames();
+  let frames = [];
+  let pixels = new Uint8Array(width * height * 4);
+  let savedPixels = null;
+
+  for (let i = 0; i < numFrames; i++) {
+    let info = reader.frameInfo(i);
+
+    if (i > 0) {
+      let prev = reader.frameInfo(i - 1);
+      if (prev.disposal === 2) {
+        clearGifRect(pixels, width, prev.x, prev.y, prev.width, prev.height);
+      } else if (prev.disposal === 3 && savedPixels) {
+        pixels.set(savedPixels);
+      }
+    }
+
+    if (info.disposal === 3) {
+      savedPixels = new Uint8Array(pixels);
+    }
+
+    reader.decodeAndBlitFrameRGBA(i, pixels);
+
+    let frameCanvas = document.createElement("canvas");
+    frameCanvas.width = width;
+    frameCanvas.height = height;
+    let frameCtx = frameCanvas.getContext("2d");
+    let imageData = frameCtx.createImageData(width, height);
+    imageData.data.set(pixels);
+    frameCtx.putImageData(imageData, 0, 0);
+
+    frames.push({
+      canvas: frameCanvas,
+      delay: Math.max(20, (info.delay > 0 ? info.delay : 10) * 10)
+    });
+  }
+
+  return {
+    width: width,
+    height: height,
+    frames: frames,
+    currentFrame: 0,
+    elapsed: 0
+  };
+}
+
+async function loadGifImageFile(file) {
+  try {
+    let arrayBuffer = await readFileAsArrayBuffer(file);
+    let animation = decodeGifToAnimation(arrayBuffer);
+    let imgType = getImageType(file.name, animation);
+
+    if (imgType !== "SHIELD") {
+      alert("Animated GIF support is currently only available for shields.");
+      return;
+    }
+
+    incrementServerStat("uploads_TOTAL");
+    incrementServerStat("uploads_" + imgType);
+
+    if (animation.frames.length > 1) {
+      animatedImages.SHIELD = animation;
+    } else {
+      clearAnimatedImage("SHIELD");
+    }
+
+    defaultImage.SHIELD = animation.frames[0].canvas;
+  } catch (err) {
+    alert("Could not read that GIF file.");
+  }
+}
+
 async function loadImageFile(file) {
   try {
+    if (isGifFile(file)) {
+      await loadGifImageFile(file);
+      return;
+    }
+
     let contentBuffer = await readImageAsync(file);
     
     let img = new Image();
@@ -427,6 +556,10 @@ async function loadImageFile(file) {
       if (imgType == null) {
         alert("That is an unsupported custom!");
         return;
+      }
+
+      if (imgType === "SHIELD") {
+        clearAnimatedImage("SHIELD");
       }
        
       incrementServerStat("uploads_TOTAL");
@@ -619,6 +752,19 @@ function readImageAsync(file) {
 
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  })
+}
+
+function readFileAsArrayBuffer(file) {
+  return new Promise((resolve, reject) => {
+    let reader = new FileReader();
+
+    reader.onload = () => {
+      resolve(reader.result);
+    };
+
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
   })
 }
 
