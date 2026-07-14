@@ -1,3 +1,5 @@
+var version = 1.06;
+
 var canvas = document.getElementById('canvas');
 var context = canvas.getContext('2d');
 var menu_directions = document.getElementById('directions');
@@ -20,8 +22,11 @@ var pinching = false,pinch = [[ox,oy],[ox,oy]];
 
 var desiredFrameTick, lastTick, aniStepTime = 0;
 
+// Convert these default ganis from default to idefault shield position
+var defaultConvertGanis = ["idle.gani","walk.gani","default.gani","walkslow.gani","profile_default.gani"];
+
 var defaultAnimations = [
-  "default.gani","walk.gani","idle.gani","carry.gani","sword.gani","sit.gani","mount.gani","pull.gani","dead.gani"
+  "default.gani","walk.gani","idle.gani","carry.gani","sword.gani","sit.gani","mount.gani","pull.gani","push.gani","dead.gani"
 ];
 
 var cachedAnis = {};
@@ -36,6 +41,7 @@ var defaultImageSource = {
     "HORSE"   : "res/images/ride.png",
     "SHIELD"  : "res/images/shield1.png",
     "SWORD"   : "res/images/sword1.png",
+    "PET"     : "res/images/classicpet_largedog_labrador0.png",
     "PARAM1"  : "res/images/null.png"
 };
 var visibleAttributes = ["SPRITES","HEAD","BODY","ATTR1","ATTR2","ATTR4","HORSE","SHIELD","SWORD","PARAM1"];
@@ -202,7 +208,6 @@ document.onreadystatechange = function () {
     //console.log("Document finished loading. Proceed with animations.");
     preloadImages();
     startAnimating(20);
-    incrementServerStat("visits");
   }
 }
 
@@ -222,7 +227,8 @@ function startAnimating(fps) {
   loadInternalGani(document.getElementById("animations").value);
   context.imageSmoothingEnabled = false;
   
-  changeZoom(isMobileDevice() ? 2 : 1);
+  //changeZoom(isMobileDevice() ? 2 : 1);
+  changeZoom(1);
 
   ox = (getCanvasWidth() - 48)/2;
   oy = (getCanvasHeight() - 48)/2;
@@ -242,7 +248,32 @@ function gameLoop(timeStamp) {
   let timeElapsed = currentTick - lastTick;
 
   if (timeElapsed > desiredFrameTick) {
+    
+    if (gani != null) {
+      if (gani.singledirection) changeDir(0);
+      
+      if (gani.anistep != null && gani.frames[gani.anistep] != null) {
+        if (gani.frames[gani.anistep].framelength == null) gani.frames[gani.anistep].framelength = 0.05;
+        let nextFrame = Math.max(0,gani.frames[gani.anistep].framelength - 0.05);
+        aniStepTime += 0.05;
+
+        if (aniStepTime > nextFrame) {
+          if (gani.loop) gani.anistep = (gani.anistep+1)%gani.frames.length;
+          else if (gani.anistep < gani.frames.length-1) {
+            gani.anistep = Math.min(gani.frames.length-1,gani.anistep+1);
+          } else if (gani.setbackto != null) {
+            let oldganidir = gani.singledirection ? 2 : gani.dir;
+            loadInternalGani(gani.setbackto);
+            gani.dir = oldganidir;
+            return;
+          }
+          aniStepTime = 0;
+        }
+      }
+    }
+
     updateAnimatedImages(timeElapsed);
+    
     draw(ox, oy);
     lastTick = currentTick;
   }
@@ -262,119 +293,78 @@ function drawLine(fromx,fromy,destx,desty) {
 }
 
 function draw(x,y) {
-  let frame;
- 
+  var frame;
+      
+  context.save();
   context.scale(oz,oz);
   context.clearRect(0,0,getCanvasWidth(),getCanvasHeight());
   context.fillStyle = "rgb(0, 128, 0)";
   context.fillRect(0,0,getCanvasWidth(),getCanvasHeight());
   
-  let lineOffset = 1;
+  var lineOffset = 1;
+
   drawLine(0,y+lineOffset,getCanvasWidth(),y+lineOffset);
   drawLine(x+lineOffset,0,x+lineOffset,getCanvasHeight());
   drawLine(x+48-lineOffset,y+lineOffset,x+48-lineOffset,y+48+lineOffset);
   drawLine(x+lineOffset,y+48-lineOffset,x+48+lineOffset,y+48-lineOffset);
-  
-  // Convert these default ganis from default to idefault shield position
-  let defaultConvertGanis = ["idle.gani","walk.gani","default.gani","walkslow.gani","profile_default.gani"];
+
+  if (gani == null) return;
+  if (gani.anistep == null) return;
+  if (gani.frames[gani.anistep] == null) return;
   
   if (gani != null) {
     if (typeof gani.anistep == "undefined") return;
-             
-    if (gani.singledirection) changeDir(0);
-    
-    if (gani.frames[gani.anistep].framelength == null) gani.frames[gani.anistep].framelength = 0.05;
-    let nextFrame = Math.max(0,gani.frames[gani.anistep].framelength - 0.05);
-    aniStepTime += 0.05;
-
-    if (aniStepTime > nextFrame) {
-      if (gani.loop) gani.anistep = (gani.anistep+1)%gani.frames.length;
-      else if (gani.anistep < gani.frames.length-1) {
-        gani.anistep = Math.min(gani.frames.length-1,gani.anistep+1);
-      } else if (gani.setbackto != null) loadInternalGani(gani.setbackto);
-      aniStepTime = 0;
-    }
-    
-    let sprites = gani.frames[gani.anistep][gani.dir].frames;
+   
+    var sprites = gani.frames[gani.anistep][gani.dir].frames;
     
     var img = new Image();
     img.src = "res/images/sprites.png";
-      
-    for (var i=0;i<sprites.length;i++) {
-      let drawsprite = sprites[i].sprite;
-      let drawx = x + sprites[i].x;
-      let drawy = y + sprites[i].y;
-      
-      let spriteObject = gani.sprites[drawsprite];
-      
-
-      var compareSpriteSource = spriteObject.source;
-      
-      // 2player mounts use ATTR2 but we should lump them under the same visibility
-      if (compareSpriteSource === "ATTR2") compareSpriteSource = "HORSE";
-      
-      // If the sprite uses an ATTR that isn't assigned an image fall back on PARAM1 for compatibility/simplicity
-      if (typeof defaultImage[compareSpriteSource] == "undefined") {
-        if (compareSpriteSource.startsWith("ATTR")) compareSpriteSource = "PARAM1";
-      }
-      
-      if (typeof defaultImage[compareSpriteSource] == "undefined") continue;
-      
-      // Don't render attributes that are toggled to be invisible
-      // But only hide them if they are in the list of default visible attributes
-      if (visibleAttributes.indexOf(compareSpriteSource) < 0 && defaultImage[compareSpriteSource].src != null) continue;
-      
-      if (
-          compareSpriteSource === "SHIELD" ||
-          compareSpriteSource === "HEAD" ||
-          compareSpriteSource === "ATTR1" ||
-          compareSpriteSource === "ATTR4" ||
-          compareSpriteSource === "SWORD"
-      ) {
-      	sx = spriteObject.sx;
-        sy = spriteObject.sy;
-        sw = spriteObject.sw;
-        sh = spriteObject.sh;
-        tx = drawx;
-        ty = drawy;
-        
-        let drawImage = getDrawableImage(compareSpriteSource);
-        imgw = drawImage.width;
-        imgh = drawImage.height;
-        
-        if (compareSpriteSource === "SHIELD") {
-            if (imgw != 38) {
-                sx = (sx * imgw) / 38;
-                oldw = sw;
-                sw = (sw * imgw) / 38;
-                tx = tx - (sw - oldw)/2;
-            }
-
-            if (imgh != 20) {
-                sy = (sy * imgh) / 20;
-                oldh = sh;
-                sh = (sh * imgh) / 20;
-                ty = ty - (sh - oldh)/2;
-            }
-
-
-        }
-        
-       if (defaultConvertGanis.indexOf(gani.file) >= 0 && gani.dir == 2 && spriteObject.index == 12) tx += 16;
-
-        context.drawImage(drawImage, sx, sy, sw, sh, tx, ty, sw, sh);
-      } else {
-        context.drawImage(defaultImage[compareSpriteSource],spriteObject.sx,spriteObject.sy,spriteObject.sw,spriteObject.sh,drawx, drawy,spriteObject.sw,spriteObject.sh);
-        
-      }
-    }
     
-    context.scale(1/oz,1/oz);
+    let baseSprites = [];
+    let headSprites = [];
+    let shieldSprites = [];
+
+    for (let sprite of sprites) {
+      let spriteObject = gani.sprites[sprite.sprite];
+      if (spriteObject == null) continue;
+
+      let positionedSprite = {
+        id: sprite.sprite,
+        x: x + sprite.x,
+        y: y + sprite.y,
+        object: spriteObject
+      };
+
+      if (spriteObject.source === "HEAD") headSprites.push(positionedSprite);
+      else if (spriteObject.source === "SHIELD") shieldSprites.push(positionedSprite);
+      else baseSprites.push(positionedSprite);
+    }
+
+    // Draw shields behind the character from up, left, and right. The down-facing
+    // shield is held in front, so it is drawn after the character instead.
+    if (gani.dir !== 2) {
+      for (let sprite of shieldSprites) drawSpriteWithAttachments(sprite);
+    }
+
+    // Explicit layers keep draw-under accessories behind the head even when a gani
+    // lists its sprites in another order.
+    for (let sprite of baseSprites) drawSpriteWithAttachments(sprite);
+    for (let sprite of headSprites) drawAttachedSprites(sprite.object.attachsprites2, sprite.x, sprite.y);
+    for (let sprite of headSprites) drawSprite(sprite.id, sprite.x, sprite.y);
+    for (let sprite of headSprites) drawAttachedSprites(sprite.object.attachsprites, sprite.x, sprite.y);
+    if (gani.dir === 2) {
+      for (let sprite of shieldSprites) drawSpriteWithAttachments(sprite);
+    }
+   
+
+    context.restore();
+    //context.scale(1/oz,1/oz);
     
     let debugs = [
       //"Window: " + window.innerWidth  + ", " + window.innerHeight,
       //gani.file + " : " + defaultConvertGanis.indexOf(gani.file),
-      "Frame: " + (gani.anistep+1) + "/" + gani.frames.length
+      "Frame: " + (gani.anistep+1) + "/" + gani.frames.length,
+      "Zoom: " + oz
     ];
     if (gani.setbackto != null && gani.loop) debugs.push("Setbackto: " + gani.setbackto);
     for (var i=0;i<debugs.length;i++) {
@@ -382,6 +372,129 @@ function draw(x,y) {
     }
   }
 
+}
+
+function drawSpriteWithAttachments(sprite) {
+  drawAttachedSprites(sprite.object.attachsprites2, sprite.x, sprite.y);
+  drawSprite(sprite.id, sprite.x, sprite.y);
+  drawAttachedSprites(sprite.object.attachsprites, sprite.x, sprite.y);
+}
+
+function drawAttachedSprites(attachments, parentX, parentY) {
+  if (attachments == null) return;
+
+  for (let attachment of attachments) {
+    if (attachment == null) continue;
+    drawSprite(attachment[0], parentX + attachment[1], parentY + attachment[2]);
+  }
+}
+
+function drawSprite(drawsprite,drawx,drawy) {
+  let spriteObject = gani.sprites[drawsprite];
+  if (spriteObject == null) return;
+ 
+  
+  var compareSpriteSource = spriteObject.source;
+  
+  // 2player mounts use ATTR2 but we should lump them under the same visibility
+  if (compareSpriteSource === "ATTR2") compareSpriteSource = "HORSE";
+  
+  // If the sprite uses an ATTR that isn't assigned an image fall back on PARAM1 for compatibility/simplicity
+  if (typeof defaultImage[compareSpriteSource] == "undefined") {
+    if (compareSpriteSource.startsWith("ATTR")) compareSpriteSource = "PARAM1";
+  }
+  
+  if (typeof defaultImage[compareSpriteSource] == "undefined") {
+    return;
+  }
+  
+  // Don't render attributes that are toggled to be invisible
+  // But only hide them if they are in the list of default visible attributes
+  if (visibleAttributes.indexOf(compareSpriteSource) < 0 &&
+      (defaultImage[compareSpriteSource].src != null || animatedImages[compareSpriteSource])) {
+    return;
+  }
+
+  let drawImage = getDrawableImage(compareSpriteSource);
+
+  context.save();
+  
+  sx = spriteObject.sx;
+  sy = spriteObject.sy;
+  sw = spriteObject.sw;
+  sh = spriteObject.sh;
+  
+  if (compareSpriteSource === "SHIELD") {
+
+    imgw = drawImage.width;
+    imgh = drawImage.height;
+    
+    if (imgw != 38) {
+      sx = (sx * imgw) / 38;
+      oldw = sw;
+      sw = (sw * imgw) / 38;
+      drawx -= (sw - oldw)/2;
+    }
+    if (imgh != 20) {
+      sy = (sy * imgh) / 20;
+      oldh = sh;
+      sh = (sh * imgh) / 20;
+      drawy -= (sh - oldh)/2;
+    }
+    
+    if (defaultConvertGanis.indexOf(gani.file) >= 0 && gani.dir == 2 && spriteObject.index == 12) drawx += 16;
+
+  } 
+  
+  context.translate(drawx,drawy);
+  let offx = 0;
+  let offy = 0;
+ 
+  let roteffect = 0;
+  let zoomeffect = 1;
+  let stretchxeffect = 1;
+  let stretchyeffect = 1;
+  
+  // Do rotation effects
+  if (spriteObject.rotation != 0) {
+    offx = -sw/2;
+    offy = -sh/2;
+    
+    roteffect = spriteObject.rotation;
+  }
+  
+  // Do zoom effects
+  if (spriteObject.zoom != 1) {
+    zoomeffect = spriteObject.zoom;
+  }
+  
+  // Do stretchx effects
+  if (spriteObject.stretchx != 1) {
+    stretchxeffect = spriteObject.stretchx;
+  }
+  
+  // Do stretchy effects
+  if (spriteObject.stretchy != 1) {
+    stretchyeffect = spriteObject.stretchy;
+  }
+  
+  context.translate(-offx,-offy);
+  if (roteffect != 0) context.rotate(roteffect);
+  if (zoomeffect != 1) context.scale(zoomeffect,zoomeffect);
+  if (stretchxeffect != 1) context.scale(-stretchxeffect,1);
+  if (stretchyeffect != 1) context.scale(1,stretchyeffect);
+  
+  context.drawImage(drawImage,sx,sy,sw,sh,offx,offy,sw,sh);
+
+  if (stretchyeffect != 1) context.scale(1,stretchyeffect);
+  if (stretchxeffect != 1) context.scale(stretchxeffect,1);    
+  if (zoomeffect != 1) context.scale(1/zoomeffect,1/zoomeffect);
+  if (roteffect != 0) context.rotate(-roteffect);
+  
+  context.translate(offx,offy);
+  
+  context.translate(-drawx,-drawy);
+  context.restore();
 }
 
 function debugText(text,x,y) {
@@ -436,23 +549,19 @@ function getDrawableImage(imgType) {
   return defaultImage[imgType];
 }
 
-function clearAnimatedImage(imgType) {
-  delete animatedImages[imgType];
-}
-
 function updateAnimatedImages(elapsedMs) {
   for (let imgType of Object.keys(animatedImages)) {
-    let anim = animatedImages[imgType];
-    if (!anim || anim.frames.length <= 1) continue;
+    let animation = animatedImages[imgType];
+    if (!animation || animation.frames.length <= 1) continue;
 
-    anim.elapsed += elapsedMs;
-    let frame = anim.frames[anim.currentFrame];
+    animation.elapsed += elapsedMs;
+    let frame = animation.frames[animation.currentFrame];
     let delay = frame.delay || 100;
 
-    while (anim.elapsed >= delay) {
-      anim.elapsed -= delay;
-      anim.currentFrame = (anim.currentFrame + 1) % anim.frames.length;
-      frame = anim.frames[anim.currentFrame];
+    while (animation.elapsed >= delay) {
+      animation.elapsed -= delay;
+      animation.currentFrame = (animation.currentFrame + 1) % animation.frames.length;
+      frame = animation.frames[animation.currentFrame];
       delay = frame.delay || 100;
     }
   }
@@ -461,11 +570,8 @@ function updateAnimatedImages(elapsedMs) {
 function clearGifRect(pixels, width, x, y, w, h) {
   for (let row = y; row < y + h; row++) {
     for (let col = x; col < x + w; col++) {
-      let idx = (row * width + col) * 4;
-      pixels[idx] = 0;
-      pixels[idx + 1] = 0;
-      pixels[idx + 2] = 0;
-      pixels[idx + 3] = 0;
+      let index = (row * width + col) * 4;
+      pixels[index] = pixels[index + 1] = pixels[index + 2] = pixels[index + 3] = 0;
     }
   }
 }
@@ -474,76 +580,50 @@ function decodeGifToAnimation(arrayBuffer) {
   let reader = new GifReader(new Uint8Array(arrayBuffer));
   let width = reader.width;
   let height = reader.height;
-  let numFrames = reader.numFrames();
-  let frames = [];
   let pixels = new Uint8Array(width * height * 4);
   let savedPixels = null;
+  let frames = [];
 
-  for (let i = 0; i < numFrames; i++) {
+  for (let i = 0; i < reader.numFrames(); i++) {
     let info = reader.frameInfo(i);
-
     if (i > 0) {
-      let prev = reader.frameInfo(i - 1);
-      if (prev.disposal === 2) {
-        clearGifRect(pixels, width, prev.x, prev.y, prev.width, prev.height);
-      } else if (prev.disposal === 3 && savedPixels) {
-        pixels.set(savedPixels);
-      }
+      let previous = reader.frameInfo(i - 1);
+      if (previous.disposal === 2) clearGifRect(pixels, width, previous.x, previous.y, previous.width, previous.height);
+      else if (previous.disposal === 3 && savedPixels) pixels.set(savedPixels);
     }
-
-    if (info.disposal === 3) {
-      savedPixels = new Uint8Array(pixels);
-    }
+    if (info.disposal === 3) savedPixels = new Uint8Array(pixels);
 
     reader.decodeAndBlitFrameRGBA(i, pixels);
-
-    let frameCanvas = document.createElement("canvas");
-    frameCanvas.width = width;
-    frameCanvas.height = height;
-    let frameCtx = frameCanvas.getContext("2d");
-    let imageData = frameCtx.createImageData(width, height);
+    let canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    let frameContext = canvas.getContext("2d");
+    let imageData = frameContext.createImageData(width, height);
     imageData.data.set(pixels);
-    frameCtx.putImageData(imageData, 0, 0);
-
-    frames.push({
-      canvas: frameCanvas,
-      delay: Math.max(20, (info.delay > 0 ? info.delay : 10) * 10)
-    });
+    frameContext.putImageData(imageData, 0, 0);
+    frames.push({ canvas: canvas, delay: Math.max(20, (info.delay > 0 ? info.delay : 10) * 10) });
   }
 
-  return {
-    width: width,
-    height: height,
-    frames: frames,
-    currentFrame: 0,
-    elapsed: 0
-  };
+  return { frames: frames, currentFrame: 0, elapsed: 0 };
 }
 
 async function loadGifImageFile(file) {
   try {
-    let arrayBuffer = await readFileAsArrayBuffer(file);
-    let animation = decodeGifToAnimation(arrayBuffer);
-    let imgType = getImageType(file.name, animation);
+    if (typeof GifReader === "undefined") throw new Error("GIF decoder is not loaded");
 
+    let animation = decodeGifToAnimation(await readFileAsArrayBuffer(file));
+    let imgType = getImageType(file.name, animation.frames[0].canvas);
     const supported = ["SHIELD", "HEAD", "ATTR1", "ATTR4", "SWORD"];
-
     if (!supported.includes(imgType)) {
       alert("Animated GIFs are only supported for shields, accessories, heads, hats, and swords.");
       return;
     }
 
-    incrementServerStat("uploads_TOTAL");
-    incrementServerStat("uploads_" + imgType);
-
-    if (animation.frames.length > 1) {
-      animatedImages[imgType] = animation;
-    } else {
-      clearAnimatedImage(imgType);
-    }
-
+    if (animation.frames.length > 1) animatedImages[imgType] = animation;
+    else delete animatedImages[imgType];
     defaultImage[imgType] = animation.frames[0].canvas;
-  } catch (err) {
+  } catch (error) {
+    console.error(error);
     alert("Could not read that GIF file.");
   }
 }
@@ -565,30 +645,15 @@ async function loadImageFile(file) {
   
     img.onload = function() {
       imgType = getImageType(file.name,img);
+
+      console.log(imgType + " " + gani.file);
       
       if (imgType == null) {
         alert("That is an unsupported custom!");
         return;
       }
 
-      if (imgType === "SHIELD") {
-        clearAnimatedImage("SHIELD");
-      }
-      else if (imgType === "ATTR1") {
-        clearAnimatedImage("ATTR1");
-      }
-      else if (imgType === "HEAD") {
-        clearAnimatedImage("HEAD");
-      }
-      else if (imgType === "ATTR4") {
-        clearAnimatedImage("ATTR4");
-      }
-      else if (imgType === "SWORD") {
-        clearAnimatedImage("SWORD");
-      }
-       
-      incrementServerStat("uploads_TOTAL");
-      incrementServerStat("uploads_" + imgType);
+      delete animatedImages[imgType];
             
       if (imgType === "HORSE") {
         if (img.height == 864) {
@@ -598,13 +663,33 @@ async function loadImageFile(file) {
         }
       } else if (imgType === "ATTR2" && img.height == 768) {
         loadInternalGani("2pmount.gani");
-      } else if (imgType == "PARAM1" && customGaniPersist == false) {
+      } 
+      // Pet stuff
+      /*else if (imgType === "ATTR3" && img.width == 208 && img.height == 48) {
+        console.log("pet hat");
+        loadInternalGani("classicpet_largedog-walk.gani");
+        defaultImage["ATTR1"] = new Image();
+        defaultImage["ATTR1"].src = defaultImageSource["PET"];
+        defaultImage["ATTR4"] = new Image();
+        defaultImage["ATTR4"].src = defaultImageSource["PARAM1"];
+      } else if (imgType === "ATTR4" && img.width == 208 && img.height == 96) {
+        console.log("pet accessory");
+        loadInternalGani("classicpet_largedog-walk.gani");
+        defaultImage["ATTR3"] = new Image();
+        defaultImage["ATTR3"].src = defaultImageSource["PARAM1"];
+        defaultImage["ATTR1"] = new Image();
+        defaultImage["ATTR1"].src = defaultImageSource["PET"];
+      } */
+      else if (imgType == "PARAM1" && customGaniPersist == false) {
         let tryParam = getParamGani(img);
-        if (tryParam != null) loadInternalGani(tryParam);
+        if (tryParam != null) {
+          loadInternalGani(tryParam);
+        }
       }
       
       defaultImage[imgType] = new Image();
       defaultImage[imgType].src = getGraalSafeImage(img,(year > 2012 && imgType != "BODY"));
+
     }
       
   } catch(err) {
@@ -621,6 +706,9 @@ function getGraalSafeImage(img,fixblackandwhite) {
   var ctx = c.getContext('2d');
   
   //onGetPNGPalette
+  
+  var foundblack = false;
+  var foundwhite = false;
 
   ctx.drawImage(img, 0, 0, w, h);
   
@@ -630,9 +718,13 @@ function getGraalSafeImage(img,fixblackandwhite) {
 
     var r=0, g=1, b=2,a=3;
     for (var p = 0; p<pixel.length; p+=4) {
-      if (pixel[p+r] == 255 && pixel[p+g] == 255 && pixel[p+b] == 255) {
+      if (pixel[p+r] == 255 && pixel[p+g] == 255 && pixel[p+b] == 255 && pixel[p+a] == 255) {
+        if (!foundwhite) window.alert("The color #FFFFFF(255,255,255) white was found in your image! Graal will draw this as transparent so please replace it.");
+        foundwhite = true;
         pixel[p+a] = 0;
-      } else if (pixel[p+r] == 0 && pixel[p+g] == 0 && pixel[p+b] == 0) {
+      } else if (pixel[p+r] == 0 && pixel[p+g] == 0 && pixel[p+b] == 0 && pixel[p+a] == 255) {
+        if (!foundblack) window.alert("The color #000000(0,0,0) black was found in your image! Graal will draw this as transparent so please replace it.");
+        foundblack = true;
         pixel[p+a] = 0;
       }
     }
@@ -659,8 +751,11 @@ function onGetPNGPalette() {
 function getImageType(filename,img) {
   //console.log(filename + " - " + "width: " + img.width + ", height : " + img.height);
   if (img.width == 32 && img.height == 560)       return "HEAD";
+  else if (img.width == 80 && img.height == 840)  return "HEAD";   // Big Head
   else if (img.width == 192 && img.height == 144) return "ATTR1";
+  else if (img.width == 192 && img.height == 192) return "ATTR1";  // New Hat
   else if (img.width == 240 && img.height == 144) return "ATTR4";
+  else if (img.width == 240 && img.height == 192) return "ATTR4";  // New Accessory
   else if (img.width == 128 && img.height == 720) return "BODY";
   else if (img.width == 128 && img.height == 96 ) return "SWORD";
   else if (img.width == 96  && img.height == 576) return "HORSE";  // Default Horse
@@ -668,6 +763,8 @@ function getImageType(filename,img) {
   else if (img.width == 320 && img.height == 864) return "HORSE";  // New Horse
   else if (img.width == 160 && img.height == 864) return "HORSE";  // New Horse with Drawover
   else if (img.width == 128 && img.height == 768) return "ATTR2";  // 2player Horse
+  else if (img.width == 208 && img.height == 48) return "ATTR3";   // Pet Hat
+  else if (img.width == 208 && img.height == 96) return "ATTR4";   // Pet Accessory
   else if (filename.toLowerCase().includes("shield") || img.width/img.height == 1.9) return "SHIELD";
   else return "PARAM1";
 }
@@ -697,6 +794,10 @@ function getParamGani(img) {
     [320,128,"ci_dirumbrella_opening-fixed.gani"],
     [320,128,"ci_dirumbrella_opening-fixed.gani"],
     [400,80,"dustytest12921a.gani"],
+    [208,48,"classicpet_largedog-walk.gani"],
+    [208,96,"classicpet_largedog-walk.gani"],
+    [80,32,"classiciphone_lantern_bringout.gani"],
+    [256,160,"classic_newbigchair.gani"],
   ];
   for (let i of ganiLookup) {
     if (img.width == i[0] && img.height == i[1]) return i[2];
@@ -713,11 +814,14 @@ async function loadExternalGani(file) {
   try {
     let contentBuffer = await readFileAsync(file);
     
-    if (!contentBuffer.trim().startsWith("GANI0001")) {
+    /*
+    if (!(contentBuffer.trim().startsWith("GANI0001") || contentBuffer.trim().startsWith("GANI0FP4"))) {
       alert(file.name + " is not a valid gani file!");
       return;
     }
+    */
     
+    console.log("loadExternalGani(" + file + ")");
     createGaniFromText(contentBuffer);
     gani.file = file.name;
     cachedAnis[file.name] = gani;
@@ -737,31 +841,32 @@ async function loadInternalGani(file) {
   if (!file.endsWith(".gani")) file = file + ".gani";
   
   try {
-    let contentBuffer = "";
-    
-    let serverGani = await getServerGaniContent("res/ganis/" + file);
+    let contentBuffer;
 
-    if (typeof serverGani == "undefined") {
-      contentBuffer = getInternalGani(file); 
-    } else {
-      if (serverGani.length > 0) {
-        contentBuffer = serverGani;
-      } else {
-        contentBuffer = getInternalGani(file); 
-      }
+    // Browsers block fetch() for file:// pages. Use the bundled gani data when
+    // previewing the project directly from disk, and fall back to it if a fetch fails.
+    if (window.location.protocol !== "file:") {
+      let dir = "res/ganis/" + file + "?v=" + version;
+      contentBuffer = await getServerGaniContent(dir);
     }
-    
-    if (!contentBuffer.trim().startsWith("GANI0001")) {
-      contentBuffer = getInternalGani(file); 
+
+    if (typeof contentBuffer !== "string" || !contentBuffer.trim().startsWith("GANI0001")) {
+      contentBuffer = getInternalGani(file);
     }
-    
-    if (!contentBuffer.trim().startsWith("GANI0001")) {
-      alert(file.name + " is not a valid gani file!");
+
+    if (typeof contentBuffer !== "string" || !contentBuffer.trim().startsWith("GANI0001")) {
+      alert(file + " is not a valid gani file!");
       return;
     }
     
     createGaniFromText(contentBuffer);
     updateGaniFileName(file);
+
+    if (gani.file == "classicpet_largedog-walk.gani") {
+      defaultImage["ATTR1"] = new Image();
+      defaultImage["ATTR1"].src = defaultImageSource["PET"];
+    }
+    
   } catch(err) {
     console.log(err);
   }
@@ -783,11 +888,7 @@ function readImageAsync(file) {
 function readFileAsArrayBuffer(file) {
   return new Promise((resolve, reject) => {
     let reader = new FileReader();
-
-    reader.onload = () => {
-      resolve(reader.result);
-    };
-
+    reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsArrayBuffer(file);
   })
@@ -842,7 +943,7 @@ function createGaniFromText(text) {
   for (var i=0;i<lines.length;i++) {
     var origline = lines[i];
     var line = lines[i].trim();
-    
+
     // Skip empty lines
     if (line == "") continue;
     
@@ -852,12 +953,17 @@ function createGaniFromText(text) {
       line = line.replace(/  +/g, " ");
       let tokens = line.split(" ");
       
-      addSprite.index       = tokens[1];
-      addSprite.source      = tokens[2];
-      addSprite.sx          = tokens[3];
-      addSprite.sy          = tokens[4];
-      addSprite.sw          = tokens[5];
-      addSprite.sh          = tokens[6];
+      addSprite.index          = tokens[1];
+      addSprite.source         = tokens[2];
+      addSprite.sx             = tokens[3];
+      addSprite.sy             = tokens[4];
+      addSprite.sw             = tokens[5];
+      addSprite.sh             = tokens[6];
+      addSprite.zoom           = 1;
+      addSprite.stretchx       = 1;
+      addSprite.stretchy       = 1;
+      addSprite.attachsprites  = new Array(0);
+      addSprite.attachsprites2 = new Array(0);
 
       gani.sprites[addSprite.index] = addSprite;
       
@@ -883,6 +989,41 @@ function createGaniFromText(text) {
     } else if (line.startsWith("SETBACKTO")) {
       gani.setbackto = line.substring(9).trim();
       if (gani.setbackto === "iidle") gani.setbackto = "idle" + ".gani";
+      
+    // Detect Rotate effects
+    } else if (line.startsWith("ROTATEEFFECT")) {
+      let parts = line.split(/\s+/);
+      gani.sprites[parts[1]].rotation = parts[2];
+    // Detect Zoom effects
+    } else if (line.startsWith("ZOOMEFFECT")) {
+      let parts = line.split(/\s+/);
+      gani.sprites[parts[1]].zoom = parts[2];
+    // Detect stretchx effects
+    } else if (line.startsWith("STRETCHXEFFECT")) {
+      let parts = line.split(/\s+/);
+      gani.sprites[parts[1]].stretchx = parts[2];
+    // Detect stretchy effects
+    } else if (line.startsWith("STRETCHYEFFECT")) {
+      let parts = line.split(/\s+/);
+      gani.sprites[parts[1]].stretchy = parts[2];
+    // Detect attachsprite2
+    } else if (line.startsWith("ATTACHSPRITE2")) {
+      let parts = line.split(/\s+/);
+      if (parts.length == 5) {
+        if (gani.sprites[parts[1]] != null) {
+          let add = [parseInt(parts[2]),parseInt(parts[3]),parseInt(parts[4])];
+          gani.sprites[parts[1]].attachsprites2.push(add);
+        }
+      }
+    // Detect attachsprite
+    } else if (line.startsWith("ATTACHSPRITE")) {
+      let parts = line.split(/\s+/);
+      if (parts.length == 5) {
+        if (gani.sprites[parts[1]] != null) {
+          let add = [parseInt(parts[2]),parseInt(parts[3]),parseInt(parts[4])];
+          gani.sprites[parts[1]].attachsprites.push(add);
+        }
+      }
     } else if (parsingAni) {
       // Detect any frame delays and modify the framelength to add on the delay
       // WAIT represents a single frame of delay, and framerate is 20fps so waitvalue*0.05 will give us our additional frame length
@@ -981,6 +1122,7 @@ function onToggleVisibility(checkbox) {
   } else {
     if (index >= 0) visibleAttributes.splice(index, 1);
   }
+  context.resetTransform();
 }
 
 function onAnimationChanged(dropdown) {
@@ -995,25 +1137,6 @@ function onZoomChange(dropdown) {
 function isMobileDevice() {
   return (typeof window.orientation !== "undefined") || (navigator.userAgent.indexOf('IEMobile') !== -1);
 }
-
-function incrementServerStat(stat,val) {
-  val = Math.max(1,val);
-  let xhr = new XMLHttpRequest(); 
-  let url = "stats.php"; 
-
-  xhr.open("POST", url, true); 
-
-  xhr.setRequestHeader("Content-Type", "application/json"); 
-
-  xhr.onreadystatechange = function () { 
-    if (xhr.readyState === 4 && xhr.status === 200) { 
-    } 
-  }; 
-
-  var data = JSON.stringify({ "stat": stat}); 
-
-  xhr.send(data); 
-} 
 
 async function getServerGaniContent(file) {
   if (!file.endsWith(".gani")) file = file + ".gani";

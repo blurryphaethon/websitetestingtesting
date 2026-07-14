@@ -27,6 +27,112 @@ SPRITE  5008           ATTR4    0   96   48   48 head accessory dead
 SPRITE  5009           ATTR4   48   96   48   48 head accessory up drawunder
 SPRITE  5010           ATTR4   96   96   48   48 head accessory down drawunder
 SPRITE  5011           ATTR4  144   96   48   48 head accessory pull down drawunder
+SPRITE 5012           ATTR4    0  144   48   48 head accessory left drawover
+SPRITE 5013           ATTR4   48  144   48   48 head accessory left drawunder
+SPRITE 5014           ATTR4   96  144   48   48 head accessory right drawover
+SPRITE 5015           ATTR4  144  144   48   48 head accessory right drawunder
+SPRITE 5016           ATTR4  192  144   48   48 head accessory up drawunder
+SPRITE 6000            HEAD   32    0   48   48 head big up
+SPRITE 6001            HEAD   32   48   48   48 head big left
+SPRITE 6002            HEAD   32   96   48   48 head big down
+SPRITE 6003            HEAD   32  144   48   48 head big right
+SPRITE 6004            HEAD   32  192   48   72 head big pulling up
+SPRITE 6005            HEAD   32  264   48   48 head big pulling left
+SPRITE 6006            HEAD   32  312   48   48 head big pulling down
+SPRITE 6007            HEAD   32  360   48   48 head big pulling right
+SPRITE 6008            HEAD   32  408   48   48 head big pushing up
+SPRITE 6009            HEAD   32  456   48   48 head big pushing left
+SPRITE 6010            HEAD   32  504   48   48 head big pushing down
+SPRITE 6011            HEAD   32  552   48   48 head big pushing right
+SPRITE 6012            HEAD   32  600   48   48 head big hurted up
+SPRITE 6013            HEAD   32  648   48   48 head big hurted left
+SPRITE 6014            HEAD   32  696   48   48 head big hurted down
+SPRITE 6015            HEAD   32  744   48   48 head big hurted right
+SPRITE 6016            HEAD   32  792   48   48 head big dead
+SPRITE   49           ATTR1    0  144   48   48 hat drawunder up
+SPRITE   50           ATTR1   48  144   48   48 hat drawunder left
+SPRITE   51           ATTR1   96  144   48   48 hat drawunder down
+SPRITE   52           ATTR1  144  144   48   48 hat drawunder right
+// New big head
+ATTACHSPRITE  100 6000  -8 -10
+ATTACHSPRITE  101 6001  -8 -10
+ATTACHSPRITE  102 6002  -8 -10
+ATTACHSPRITE  103 6003  -8 -10
+ATTACHSPRITE  104 6004  -8 -12
+ATTACHSPRITE  105 6005  -8 -10
+ATTACHSPRITE  106 6006  -8 -10
+ATTACHSPRITE  107 6007  -8 -10
+ATTACHSPRITE  108 6008  -8 -10
+ATTACHSPRITE  109 6009  -8 -10
+ATTACHSPRITE  110 6010  -8 -10
+ATTACHSPRITE  111 6011  -8 -10
+ATTACHSPRITE  112 6012  -8 -10
+ATTACHSPRITE  113 6013  -8 -10
+ATTACHSPRITE  114 6014  -8 -10
+ATTACHSPRITE  115 6015  -8 -10
+ATTACHSPRITE  116 6016  -8 -10
+// Accessories
+ATTACHSPRITE  100 5000  -8  -2
+ATTACHSPRITE  101 5001 -12  -2
+ATTACHSPRITE  102 5002  -8  -2
+ATTACHSPRITE  103 5003  -4  -2
+ATTACHSPRITE  104 5004  -8  -8
+ATTACHSPRITE  105 5005 -14  -9
+ATTACHSPRITE  106 5006  -8   2
+ATTACHSPRITE  107 5007  -2  -9
+ATTACHSPRITE  108 5000  -8  -2
+ATTACHSPRITE  109 5001 -12  -2
+ATTACHSPRITE  110 5002  -8  -2
+ATTACHSPRITE  111 5003  -4  -2
+ATTACHSPRITE  112 5000  -8  -2
+ATTACHSPRITE  113 5001 -12  -2
+ATTACHSPRITE  114 5002  -8  -2
+ATTACHSPRITE  115 5003  -4  -2
+ATTACHSPRITE  116 5008 -21 -13
+// Drawunder accessories
+ATTACHSPRITE2 100 5009  -8  -2
+ATTACHSPRITE2 102 5010  -8  -2
+ATTACHSPRITE2 104 5011  -8  -8
+ATTACHSPRITE2 106 5010  -8  -2
+ATTACHSPRITE2 110 5010  -8  -2
+ATTACHSPRITE2 101 5013 -12  -2
+ATTACHSPRITE2 109 5013 -12  -2
+ATTACHSPRITE2 113 5013 -12  -2
+ATTACHSPRITE2 103 5015  -4  -2
+ATTACHSPRITE2 111 5015  -4  -2
+// Drawunder Hat
+ATTACHSPRITE2 100   49  -8 -18
+ATTACHSPRITE2 101   50 -12 -18
+ATTACHSPRITE2 102   51  -8 -18
+ATTACHSPRITE2 103   52  -4 -18
+// Hat
+ATTACHSPRITE  100   40  -8 -18
+ATTACHSPRITE  101   41 -12 -18
+ATTACHSPRITE  102   42  -8 -18
+ATTACHSPRITE  103   43  -4 -18
+ATTACHSPRITE  104   44  -8 -18
+ATTACHSPRITE  105   45   2  -9
+ATTACHSPRITE  106   46  -8 -14
+ATTACHSPRITE  107   47 -18  -9
+ATTACHSPRITE  108   40  -8 -18
+ATTACHSPRITE  109   41 -12 -18
+ATTACHSPRITE  110   42  -8 -18
+ATTACHSPRITE  111   43  -4 -18
+ATTACHSPRITE  112   40  -8 -18
+ATTACHSPRITE  113   41 -12 -18
+ATTACHSPRITE  114   42  -8 -18
+ATTACHSPRITE  115   43  -4 -18
+ATTACHSPRITE  116   43  -5 -13
+// Drawover accessories
+ATTACHSPRITE  101 5012 -12  -2
+ATTACHSPRITE  109 5012 -12  -2
+ATTACHSPRITE  113 5012 -12  -2
+ATTACHSPRITE  103 5014  -4  -2
+ATTACHSPRITE  111 5014  -4  -2
+ATTACHSPRITE  115 5014  -4  -2
+ATTACHSPRITE  100 5016  -8  -2
+ATTACHSPRITE  108 5016  -8  -2
+ATTACHSPRITE  112 5016  -8  -2
 
 LOOP
 CONTINUOUS
@@ -37,48 +143,48 @@ DEFAULTHEAD head19.png
 DEFAULTBODY body.png
 
 ANI
-   0  12  34,    4  12  15,  240   8   8, 5009   0  -6,  100   8  -4, 5000   0  -6,   40   0 -21
-   0  12  36,    4  -1  18,  253   7  14,  101  10  -1, 5001  -3  -3,   41  -3 -18
-   0  12  36,    4  12  21,  246   8   2, 5010   0  -7,  102   8  -5, 5002   0  -7,   42   0 -23
-   0  12  36,    4  25  18,  255   9  14,  103   6  -1, 5003   2  -3,   43   3 -18
+   0  12  34,    4  12  15,  240   8   8,  100   8  -4
+   0  12  36,    4  -1  18,  253   7  14,  101  10  -1
+   0  12  36,    4  12  21,  246   8   2,  102   8  -5
+   0  12  36,    4  25  18,  255   9  14,  103   6  -1
 
-   0  12  34,    4  12  10,  240   8   3, 5009   0 -11,  100   8  -9, 5000   0 -11,   40   0 -26
-   0  12  36,    3   1  14,  253   8   8,  101  10  -7, 5001  -3  -9,   41  -3 -24
-   0  12  36,    3  12  16,  246   8  -5, 5010   0 -13,  102   8 -11, 5002   0 -13,   42   0 -29
-   0  12  36,    3  23  13,  255   9   7,  103   7  -8, 5003   3 -10,   43   4 -25
+   0  12  34,    4  12  10,  240   8   3,  100   8  -9
+   0  12  36,    3   1  14,  253   8   8,  101  10  -7
+   0  12  36,    3  12  16,  246   8  -5,  102   8 -11
+   0  12  36,    3  23  13,  255   9   7,  103   7  -8
 WAIT 1
 PLAYSOUND frog.wav 1.5 2
 
-   0  12  34,    4  12  -3,  240   8 -10, 5009   0 -25,  100   8 -23, 5000   0 -25,   40   0 -40
-   0  12  36,    3   1   7,  253   9   1,  101  10 -14, 5001  -3 -16,   41  -3 -31
-   3  12   6,  246   8 -16,    0  12  36, 5010   0 -26,  102   8 -24, 5002   0 -26,   42   0 -42
-   0  12  36,    3  23   8,  255   8   2,  103   7 -13, 5003   3 -15,   43   4 -30
+   0  12  34,    4  12  -3,  240   8 -10,  100   8 -23
+   0  12  36,    3   1   7,  253   9   1,  101  10 -14
+   3  12   6,  246   8 -16,    0  12  36,  102   8 -24
+   0  12  36,    3  23   8,  255   8   2,  103   7 -13
 WAIT 1
 
-   0  12  34,    4  12  -8,  240   8 -15, 5009   0 -31,  100   8 -29, 5000   0 -31,   40   0 -46
-   0  12  36,    2   0   3,  253   8  -4,  101  10 -20, 5001  -3 -22,   41  -3 -37
-   0  12  36,    2  12   2,  246   8 -21, 5010   0 -31,  102   8 -29, 5002   0 -31,   42   0 -47
-   0  12  36,    2  24   4,  255   9  -3,  103   7 -19, 5003   3 -21,   43   4 -36
+   0  12  34,    4  12  -8,  240   8 -15,  100   8 -29
+   0  12  36,    2   0   3,  253   8  -4,  101  10 -20
+   0  12  36,    2  12   2,  246   8 -21,  102   8 -29
+   0  12  36,    2  24   4,  255   9  -3,  103   7 -19
 WAIT 2
 
-   0  12  34,    4  12  -3,  240   8 -12, 5009   0 -28,  100   8 -26, 5000   0 -28,   40   0 -43
-   0  12  36,    2   0   4,  253   8  -3,  101  10 -20, 5001  -3 -22,   41  -3 -37
-   0  12  36,    2  12   4,  246   8 -19, 5010   0 -30,  102   8 -28, 5002   0 -30,   42   0 -46
-   0  12  36,    2  24   5,  255   9  -2,  103   7 -19, 5003   3 -21,   43   4 -36
+   0  12  34,    4  12  -3,  240   8 -12,  100   8 -26
+   0  12  36,    2   0   4,  253   8  -3,  101  10 -20
+   0  12  36,    2  12   4,  246   8 -19,  102   8 -28
+   0  12  36,    2  24   5,  255   9  -2,  103   7 -19
 WAIT 2
 
-   0  12  34,    4  12   2,  240   8  -7, 5009   0 -25,  100   8 -23, 5000   0 -25,   40   0 -40
-   0  12  36,    3   0   9,  253   8   2,  101  10 -15, 5001  -3 -17,   41  -3 -32
-   0  12  36,    3  12  10,  246   8 -13, 5010   0 -24,  102   8 -22, 5002   0 -24,   42   0 -40
-   0  12  36,    3  24  10,  255   9   3,  103   7 -14, 5003   3 -16,   43   4 -31
+   0  12  34,    4  12   2,  240   8  -7,  100   8 -23
+   0  12  36,    3   0   9,  253   8   2,  101  10 -15
+   0  12  36,    3  12  10,  246   8 -13,  102   8 -22
+   0  12  36,    3  24  10,  255   9   3,  103   7 -14
 
-   0  12  34,    4  12  11,  240   8  -2, 5009   0 -18,  100   8 -16, 5000   0 -18,   40   0 -33
-   0  12  36,    4   0  12,  253   8   6,  101  10 -10, 5001  -3 -12,   41  -3 -27
-   0  12  36,    3  12  17,  246   8  -2, 5010   0 -12,  102   8 -10, 5002   0 -12,   42   0 -28
-   0  12  36,    4  25  14,  255   9   8,  103   7  -8, 5003   3 -10,   43   4 -25
+   0  12  34,    4  12  11,  240   8  -2,  100   8 -16
+   0  12  36,    4   0  12,  253   8   6,  101  10 -10
+   0  12  36,    3  12  17,  246   8  -2,  102   8 -10
+   0  12  36,    4  25  14,  255   9   8,  103   7  -8
 
-   0  12  34,    4  12  11,  240   8  -2, 5009   0 -18,  100   8 -16, 5000   0 -18,   40   0 -33
-   0  12  36,    4   0  12,  253   8   6,  101  10 -10, 5001  -3 -12,   41  -3 -27
-   0  12  36,    3  12  19,  246   8   1, 5010   0  -7,  102   8  -5, 5002   0  -7,   42   0 -23
-   0  12  36,    4  25  14,  255   9   8,  103   7  -8, 5003   3 -10,   43   4 -25
+   0  12  34,    4  12  11,  240   8  -2,  100   8 -16
+   0  12  36,    4   0  12,  253   8   6,  101  10 -10
+   0  12  36,    3  12  19,  246   8   1,  102   8  -5
+   0  12  36,    4  25  14,  255   9   8,  103   7  -8
 ANIEND
