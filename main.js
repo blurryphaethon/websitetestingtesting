@@ -529,7 +529,7 @@ async function loadGifImageFile(file) {
     const supported = ["SHIELD", "HEAD", "ATTR1", "ATTR4", "SWORD"];
 
     if (!supported.includes(imgType)) {
-      alert("Animated GIFs are only supported for shields, heads, hats, and swords.");
+      alert("Animated GIFs are only supported for shields, accessories, heads, hats, and swords.");
       return;
     }
 
@@ -573,6 +573,18 @@ async function loadImageFile(file) {
 
       if (imgType === "SHIELD") {
         clearAnimatedImage("SHIELD");
+      }
+      else if (imgType === "ATTR1") {
+        clearAnimatedImage("ATTR1");
+      }
+      else if (imgType === "HEAD") {
+        clearAnimatedImage("HEAD");
+      }
+      else if (imgType === "ATTR4") {
+        clearAnimatedImage("ATTR4");
+      }
+      else if (imgType === "SWORD") {
+        clearAnimatedImage("SWORD");
       }
        
       incrementServerStat("uploads_TOTAL");
