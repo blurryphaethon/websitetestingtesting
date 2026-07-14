@@ -328,6 +328,7 @@ function draw(x,y) {
           compareSpriteSource === "SHIELD" ||
           compareSpriteSource === "HEAD" ||
           compareSpriteSource === "ATTR1" ||
+          compareSpriteSource === "ATTR4" ||
           compareSpriteSource === "SWORD"
       ) {
       	sx = spriteObject.sx;
@@ -525,7 +526,7 @@ async function loadGifImageFile(file) {
     let animation = decodeGifToAnimation(arrayBuffer);
     let imgType = getImageType(file.name, animation);
 
-    const supported = ["SHIELD", "HEAD", "ATTR1", "SWORD"];
+    const supported = ["SHIELD", "HEAD", "ATTR1", "ATTR4", "SWORD"];
 
     if (!supported.includes(imgType)) {
       alert("Animated GIFs are only supported for shields, heads, hats, and swords.");
